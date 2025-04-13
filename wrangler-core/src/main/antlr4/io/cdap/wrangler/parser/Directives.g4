@@ -41,17 +41,19 @@ options {
 /**
  * Parser Grammar for recognizing tokens and constructs of the directives language.
  */
+
 recipe
  : statements EOF
  ;
 
 statements
- :  ( Comment | macro | directive ';' | pragma ';' | ifStatement)*
- ;
+ :  ( Comment | macro | directive ';' | pragma ';' | ifStatement)* ;
 
 directive
  : command
-  (   codeblock
+   (   byteSize
+    | timeDuration
+    | codeblock
     | identifier
     | macro
     | text
@@ -64,15 +66,11 @@ directive
     | stringList
     | numberRanges
     | properties
-  )*?
-  ;
+   )*?
+   ;
 
 ifStatement
-  : ifStat elseIfStat* elseStat? '}'
-  ;
-
-ifStat
-  : 'if' expression '{' statements
+  : 'if' expression '{' statements '}'
   ;
 
 elseIfStat
@@ -88,7 +86,7 @@ expression
   ;
 
 forStatement
- : 'for' '(' Identifier '=' expression ';' expression ';' expression ')' '{'  statements '}'
+ : 'for' '(' Identifier '=' expression ';' expression ';' expression ')' '{' statements '}'
  ;
 
 macro
@@ -116,24 +114,21 @@ identifier
  ;
 
 properties
- : 'prop' ':' OBrace (propertyList)+  CBrace
- | 'prop' ':' OBrace OBrace (propertyList)+ CBrace { notifyErrorListeners("Too many start paranthesis"); }
- | 'prop' ':' OBrace (propertyList)+ CBrace CBrace { notifyErrorListeners("Too many start paranthesis"); }
+ : 'prop' ':' OBrace (propertyList)+ CBrace
+ | 'prop' ':' OBrace OBrace (propertyList)+ CBrace { notifyErrorListeners("Too many start parentheses"); }
+ | 'prop' ':' OBrace (propertyList)+ CBrace CBrace { notifyErrorListeners("Too many start parentheses"); }
  | 'prop' ':' (propertyList)+ CBrace { notifyErrorListeners("Missing opening brace"); }
  | 'prop' ':' OBrace (propertyList)+  { notifyErrorListeners("Missing closing brace"); }
  ;
 
 propertyList
- : property (',' property)*
- ;
+ : property (',' property)* ;
 
 property
- : Identifier '=' ( text | number | bool )
- ;
+ : Identifier '=' ( text | number | bool ) ;
 
 numberRanges
- : numberRange ( ',' numberRange)*
- ;
+ : numberRange ( ',' numberRange)* ;
 
 numberRange
  : Number ':' Number '=' value
@@ -166,7 +161,7 @@ number
 bool
  : Bool
  ;
-
+ 
 condition
  : OBrace (~CBrace | condition)* CBrace
  ;
@@ -176,29 +171,33 @@ command
  ;
 
 colList
- : Column (','  Column)+
- ;
+ : Column (','  Column)+ ;
 
 numberList
- : Number (',' Number)+
- ;
+ : Number (',' Number)+ ;
 
 boolList
- : Bool (',' Bool)+
- ;
+ : Bool (',' Bool)+ ;
 
 stringList
- : String (',' String)+
- ;
+ : String (',' String)+ ;
 
 identifierList
- : Identifier (',' Identifier)*
- ;
-
+ : Identifier (',' Identifier)* ;
 
 /*
- * Following are the Lexer Rules used for tokenizing the recipe.
+ * Lexer Rules
  */
+
+// Rule for byte size
+BYTE_SIZE
+  :  ( [0-9]+ ( '.' [0-9]+ )? ) ( 'B' | 'KB' | 'MB' | 'GB' | 'TB' );
+
+// Rule for time duration
+TIME_DURATION
+  :  ( [0-9]+ ( '.' [0-9]+ )? ) ( 'ms' | 's' | 'm' | 'h' );
+
+// Common lexer rules
 OBrace   : '{';
 CBrace   : '}';
 SColon   : ';';
@@ -247,7 +246,7 @@ BackSlash: '\\';
 Dollar   : '$';
 Tilde    : '~';
 
-
+// Boolean and Number types
 Bool
  : 'true'
  | 'false'
@@ -258,16 +257,13 @@ Number
  ;
 
 Identifier
- : [a-zA-Z_\-] [a-zA-Z_0-9\-]*
- ;
+ : [a-zA-Z_\-] [a-zA-Z_0-9\-]* ;
 
 Macro
- : [a-zA-Z_] [a-zA-Z_0-9]*
- ;
+ : [a-zA-Z_] [a-zA-Z_0-9]* ;
 
 Column
- : ':' [a-zA-Z_\-] [:a-zA-Z_0-9\-]*
- ;
+ : ':' [a-zA-Z_\-] [:a-zA-Z_0-9\-]* ;
 
 String
  : '\'' ( EscapeSequence | ~('\'') )* '\''
